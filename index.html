@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>スマホ塔防サンプル</title>
+<style>
+  html, body { margin:0; padding:0; overflow:hidden; background:#111; }
+  canvas { display:block; }
+  #ui { position:absolute; top:10px; left:10px; color:white; font:16px sans-serif; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="ui"></div>
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+
+let cellSize = 40;
+let rows = Math.floor(window.innerHeight / cellSize);
+let cols = Math.floor(window.innerWidth / cellSize);
+canvas.width = cols * cellSize;
+canvas.height = rows * cellSize;
+
+// マップ
+let towers = []; // {r,c}
+let enemies = []; // {x,y,hp}
+let coins = 10;
+let life = 10;
+let wave = 1;
+let ui = document.getElementById('ui');
+let placingTower = false;
+
+// 敵生成
+function spawnEnemy() {
+  enemies.push({x:0, y:rows/2*cellSize, hp:3, speed:1});
+}
+
+// タワー攻撃
+function towerAttack() {
+  towers.forEach(t=>{
+    enemies.forEach(e=>{
+      const dx = e.x - t.c*cellSize;
+      const dy = e.y - t.r*cellSize;
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      if(dist<cellSize*1.5){
+        e.hp -= 0.1;
+      }
+    });
+  });
+}
+
+// 敵移動
+function moveEnemies() {
+  enemies.forEach(e=>{
+    e.x += e.speed;
+  });
+  // ゴールチェック
+  enemies = enemies.filter(e=>{
+    if(e.x > canvas.width){
+      life--;
+      return false;
+    }
+    return e.hp>0;
+  });
+}
+
+// 描画
+function draw() {
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // グリッド
+  ctx.strokeStyle = '#222';
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      ctx.strokeRect(c*cellSize,r*cellSize,cellSize,cellSize);
+    }
+  }
+
+  // 塔
+  towers.forEach(t=>{
+    ctx.fillStyle = '#0f0';
+    ctx.fillRect(t.c*cellSize+5, t.r*cellSize+5, cellSize-10, cellSize-10);
+  });
+
+  // 敵
+  enemies.forEach(e=>{
+    ctx.fillStyle = '#f33';
+    ctx.fillRect(e.x, e.y, cellSize-5, cellSize-5);
+  });
+
+  ui.innerHTML = `ライフ: ${life} | コイン: ${coins} | ウェーブ: ${wave}`;
+}
+
+// タップで塔設置
+canvas.addEventListener('click', e=>{
+  const rect = canvas.getBoundingClientRect();
+  const c = Math.floor((e.clientX-rect.left)/cellSize);
+  const r = Math.floor((e.clientY-rect.top)/cellSize);
+  if(coins>=5 && !towers.find(t=>t.r===r && t.c===c)){
+    towers.push({r,c});
+    coins -= 5;
+  }
+});
+
+// メインループ
+function loop(){
+  towerAttack();
+  moveEnemies();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+
+// ウェーブ生成
+setInterval(()=>{
+  spawnEnemy();
+}, 2000);
+
+// リサイズ対応
+window.addEventListener('resize', ()=>{
+  rows = Math.floor(window.innerHeight / cellSize);
+  cols = Math.floor(window.innerWidth / cellSize);
+  canvas.width = cols * cellSize;
+  canvas.height = rows * cellSize;
+});
+</script>
+</body>
+</html>
